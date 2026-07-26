@@ -1,0 +1,11 @@
+# database
+*.db
+
+# python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# vi
+*.swp
+*.swo
