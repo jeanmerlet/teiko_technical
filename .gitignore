@@ -1,6 +1,3 @@
-# database
-*.db
-
 # python
 __pycache__/
 *.py[cod]
