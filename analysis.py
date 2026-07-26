@@ -3,11 +3,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from scipy.stats import mannwhitneyu
-from statsmodels.stats.multitest import multipletests
 import statsmodels.api as sm
+from scipy.stats import mannwhitneyu, ttest_ind
 from statsmodels.formula.api import gee
 from statsmodels.genmod.cov_struct import Exchangeable
+from statsmodels.stats.multitest import multipletests
 
 import os
 
@@ -16,12 +16,40 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(ROOT, "cell-count.db")
 OUTPUT_DIR = os.path.join(ROOT, "outputs")
 
-FREQUENCIES_PATH = os.path.join(OUTPUT_DIR, "cell_frequencies.csv")
-FILTERED_PATH = os.path.join(OUTPUT_DIR, "response_analysis_data.csv")
-GEE_RESULTS_PATH = os.path.join(OUTPUT_DIR, "gee_results.csv")
-SUBJECT_MEANS_PATH = os.path.join(OUTPUT_DIR, "subject_mean_frequencies.csv")
-AGGREGATED_RESULTS_PATH = os.path.join(OUTPUT_DIR, "subject_aggregated_results.csv")
-BOXPLOT_PATH = os.path.join(OUTPUT_DIR, "response_boxplots.png")
+FREQUENCIES_PATH = os.path.join(
+    OUTPUT_DIR,
+    "cell_frequencies.csv",
+)
+
+FILTERED_PATH = os.path.join(
+    OUTPUT_DIR,
+    "response_analysis_data.csv",
+)
+
+GEE_RESULTS_PATH = os.path.join(
+    OUTPUT_DIR,
+    "gee_results.csv",
+)
+
+SUBJECT_MEANS_PATH = os.path.join(
+    OUTPUT_DIR,
+    "subject_mean_frequencies.csv",
+)
+
+AGGREGATED_RESULTS_PATH = os.path.join(
+    OUTPUT_DIR,
+    "subject_aggregated_results.csv",
+)
+
+BOXPLOT_PATH = os.path.join(
+    OUTPUT_DIR,
+    "response_boxplots.png",
+)
+
+TIME_BOXPLOT_PATH = os.path.join(
+    OUTPUT_DIR,
+    "response_boxplots_by_time.png",
+)
 
 CELL_TYPES = [
     "b_cell",
@@ -71,7 +99,13 @@ def calculate_frequencies(cell_counts):
     frequencies = cell_counts.rename(
         columns={"cell_type": "population"}
     )[
-        ["sample", "total_count", "population", "count", "percentage"]
+        [
+            "sample",
+            "total_count",
+            "population",
+            "count",
+            "percentage",
+        ]
     ]
 
     return frequencies
@@ -129,7 +163,9 @@ def run_gee_analysis(response_data):
         results.append(
             {
                 "population": population,
-                "responder_subjects": responders["subject"].nunique(),
+                "responder_subjects": (
+                    responders["subject"].nunique()
+                ),
                 "nonresponder_subjects": (
                     nonresponders["subject"].nunique()
                 ),
@@ -141,8 +177,12 @@ def run_gee_analysis(response_data):
                 ),
                 "effect": fit.params["responder"],
                 "standard_error": fit.bse["responder"],
-                "confidence_interval_lower": confidence_interval.iloc[0],
-                "confidence_interval_upper": confidence_interval.iloc[1],
+                "confidence_interval_lower": (
+                    confidence_interval.iloc[0]
+                ),
+                "confidence_interval_upper": (
+                    confidence_interval.iloc[1]
+                ),
                 "p_value": fit.pvalues["responder"],
             }
         )
@@ -154,7 +194,9 @@ def run_gee_analysis(response_data):
         method="fdr_bh",
     )[1]
 
-    results["significant"] = results["adjusted_p_value"] < 0.05
+    results["significant"] = (
+        results["adjusted_p_value"] < 0.05
+    )
 
     return results
 
@@ -185,7 +227,13 @@ def run_subject_aggregated_analysis(response_data):
             "percentage",
         ]
 
-        test = mannwhitneyu(
+        welch_test = ttest_ind(
+            responders,
+            nonresponders,
+            equal_var=False,
+        )
+
+        mann_whitney_test = mannwhitneyu(
             responders,
             nonresponders,
             alternative="two-sided",
@@ -196,24 +244,51 @@ def run_subject_aggregated_analysis(response_data):
                 "population": population,
                 "responder_subjects": len(responders),
                 "nonresponder_subjects": len(nonresponders),
-                "responder_median_percentage": responders.median(),
-                "nonresponder_median_percentage": nonresponders.median(),
-                "median_difference": (
-                    responders.median() - nonresponders.median()
+                "responder_mean_percentage": responders.mean(),
+                "nonresponder_mean_percentage": (
+                    nonresponders.mean()
                 ),
-                "test_statistic": test.statistic,
-                "p_value": test.pvalue,
+                "mean_difference": (
+                    responders.mean() - nonresponders.mean()
+                ),
+                "welch_t_statistic": welch_test.statistic,
+                "welch_p_value": welch_test.pvalue,
+                "responder_median_percentage": responders.median(),
+                "nonresponder_median_percentage": (
+                    nonresponders.median()
+                ),
+                "median_difference": (
+                    responders.median()
+                    - nonresponders.median()
+                ),
+                "mann_whitney_statistic": (
+                    mann_whitney_test.statistic
+                ),
+                "mann_whitney_p_value": (
+                    mann_whitney_test.pvalue
+                ),
             }
         )
 
     results = pd.DataFrame(results)
 
-    results["adjusted_p_value"] = multipletests(
-        results["p_value"],
+    results["welch_adjusted_p_value"] = multipletests(
+        results["welch_p_value"],
         method="fdr_bh",
     )[1]
 
-    results["significant"] = results["adjusted_p_value"] < 0.05
+    results["welch_significant"] = (
+        results["welch_adjusted_p_value"] < 0.05
+    )
+
+    results["mann_whitney_adjusted_p_value"] = multipletests(
+        results["mann_whitney_p_value"],
+        method="fdr_bh",
+    )[1]
+
+    results["mann_whitney_significant"] = (
+        results["mann_whitney_adjusted_p_value"] < 0.05
+    )
 
     return subject_means, results
 
@@ -227,18 +302,41 @@ def plot_response_groups(response_data):
         y="percentage",
         hue="response",
         order=CELL_TYPES,
-        hue_order=["no", "yes"],
+        hue_order=["no", "yes"]
     )
 
     plt.xlabel("Immune cell population")
     plt.ylabel("Relative frequency (%)")
     plt.title(
-        "Immune Cell Frequencies in Miraclib-Treated Melanoma Patients"
+        "Immune Cell Frequencies in "
+        "Miraclib-Treated Melanoma Patients"
     )
     plt.legend(title="Response")
     plt.tight_layout()
     plt.savefig(BOXPLOT_PATH, dpi=300)
     plt.close()
+
+
+def plot_response_groups_by_time(response_data):
+    plot = sns.catplot(
+        data=response_data,
+        x="population",
+        y="percentage",
+        hue="response",
+        col="time_from_treatment_start",
+        kind="box",
+        order=CELL_TYPES,
+        hue_order=["no", "yes"],
+        height=5,
+        aspect=1,
+        sharey=True,
+    )
+
+    plot.set_axis_labels("Immune cell population", "Relative frequency (%)")
+    plot.set_titles("Day {col_name}")
+    plot.fig.suptitle("Immune Cell Frequencies by Treatment Time", y=1.04)
+    plot.savefig(TIME_BOXPLOT_PATH, dpi=300, bbox_inches="tight")
+    plt.close(plot.fig)
 
 
 def main():
@@ -254,12 +352,14 @@ def main():
     subject_means, aggregated_results = run_subject_aggregated_analysis(response_data)
     subject_means.to_csv(SUBJECT_MEANS_PATH, index=False)
     aggregated_results.to_csv(AGGREGATED_RESULTS_PATH, index=False)
-    plot_response_groups(response_data)
 
-    print("\nGEE results:")
-    print(gee_results.to_string(index=False))
-    print("\nSubject-aggregated results:")
-    print(aggregated_results.to_string(index=False))
+    plot_response_groups(response_data)
+    plot_response_groups_by_time(response_data)
+
+    gee_print = gee_results[["population", "effect", "adjusted_p_value", "significant"]]
+    aggregated_print = aggregated_results[["population", "mean_difference", "welch_adjusted_p_value", "welch_significant"]]
+    print("\nGEE results:\n", gee_print.to_string(index=False))
+    print("\nSubject-aggregated Welch results:\n", aggregated_print.to_string(index=False))
     print(f"\nSaved analysis outputs to {OUTPUT_DIR}")
 
 
