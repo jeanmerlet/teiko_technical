@@ -2,7 +2,7 @@
 
 This repository contains a reproducible SQLite and Python pipeline for loading, analyzing, and visualizing the provided immune cell-count dataset.
 
-Dashboard: **[link to be added after deployment]**
+Dashboard: [Interactive immune cell analysis](https://teikotechnical-bobloblaw.streamlit.app/)
 
 ## Running the project
 
@@ -57,12 +57,4 @@ For hundreds of projects and thousands of samples, the same schema would remain 
 * `outputs/`: generated analysis tables and figures.
 * `Makefile`: commands for dependency installation, pipeline execution, and dashboard startup.
 
-The loading, analysis, and dashboard components are kept separate so that the database and all outputs can be reproduced without starting the dashboard.
-
-## Analysis
-
-Relative cell frequencies are calculated by dividing each population count by the total count for its sample.
-
-Miraclib-treated melanoma PBMC samples are compared between responders and nonresponders using generalized estimating equations. The models adjust for collection time and account for repeated samples from the same subject. Subject-aggregated Welch’s t-tests are included as a sensitivity analysis, with Mann–Whitney U tests as a nonparametric check. Benjamini–Hochberg correction is applied across the five immune populations.
-
-The pipeline also identifies baseline melanoma PBMC samples from miraclib-treated subjects and reports sample counts by project and subject counts by response and sex.
+The loading, analysis, and dashboard components are kept separate so that the database and all outputs can be reproduced without starting the dashboard. The entire analysis is located in analysis.py but separated into modular functions. If there were more analysis to do, I'd split up the analysis into different, more specific Python analysis scripts. But for this small, focused ananalysis that didn't seem necessary. Also, the SQL databases were loaded into pandas dataframes, and most of the analysis was done in pandas rather than with SQL queries because pandas code is more compact and clear than embedded SQL queries.
