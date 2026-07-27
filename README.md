@@ -43,7 +43,7 @@ The SQLite database uses three related tables:
 
 Each sample references a subject through a foreign key, and each cell-count record references a sample. The composite primary key `(sample, cell_type)` ensures that each sample has at most one count for each population.
 
-This design avoids repeating subject and sample metadata for every cell population. Storing cell counts in long format also allows additional populations (e.g., granulocytes) to be added without changing the database schema.
+This design avoids repeating subject and sample metadata for every cell population. Storing cell counts in long format allows additional populations (e.g., granulocytes) to be added without redesigning the tables, although the current cell-type validation constraint would need to be updated.
 
 For hundreds of projects and thousands of samples, the same schema would remain suitable. Indexes could be added to frequently filtered columns such as project, condition, treatment, and collection time. Larger aggregations could be performed directly in SQL so that only summarized results are loaded into Python. If data volume or concurrent access grew beyond SQLite’s intended use, the schema could be transferred to a server-based relational database such as PostgreSQL.
 

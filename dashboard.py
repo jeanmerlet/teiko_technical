@@ -146,7 +146,7 @@ with response_tab:
     st.header("Miraclib response analysis")
 
     st.write(
-        "The box plots below are generated with the data only from the melanoma, PBMC samples. Generalized estimating equations (GEE) identified a small but statistically significant 0.64-percentage-point increase in CD4+ T-cell frequency among responders compared with nonresponders (30.22% versus 29.66%). No other cell populations differed significantly after multiple-testing correction. Subject-aggregated Welch’s t-tests produced consistent results, whereas the nonparametric Mann–Whitney U sensitivity analysis identified no significant differences after correction."
+        "The box plots below are generated with the data only from the miraclib-treated melanoma PBMC samples. Generalized estimating equations (GEE) identified a small but statistically significant 0.64-percentage-point increase in CD4+ T-cell frequency among responders compared with nonresponders (30.54% versus 29.90%). No other cell populations differed significantly after multiple-testing correction. Subject-aggregated Welch’s t-tests produced consistent results, whereas the nonparametric Mann–Whitney U sensitivity analysis identified no significant differences after correction."
     )
 
     available_times = sorted(response_data["time_from_treatment_start"].unique())
